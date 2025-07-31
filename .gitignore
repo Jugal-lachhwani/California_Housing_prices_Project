@@ -1,0 +1,12 @@
+venv/
+.venv/
+
+# Bytecode and cache
+__pycache__/
+*.py[cod]
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+
+Housing_prices.joblib
