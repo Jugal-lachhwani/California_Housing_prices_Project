@@ -1,33 +1,45 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
-from custom_transformers import CombinedAttributesAdder
-import joblib
-import pandas as pd
+from fastapi import FastAPI # type: ignore
+import numpy as np # type: ignore
+import joblib # type: ignore
+import pandas as pd # type: ignore
+import traceback
+from schema.user_input import HousingInput
+from schema.output_validation import PredictionResponse
+from predict import predict_output
 
-class PredictHousePrice(BaseModel):
-    longitude: float = Field(..., description="Longitude of the house location")
-    latitude: float = Field(..., description="Latitude of the house location")
-    housing_median_age: float = Field(..., description="Median age of the houses in the area")
-    total_rooms: float = Field(..., description="Total number of rooms in the house")
-    total_bedrooms: float = Field(..., description="Total number of bedrooms in the house")
-    population: float = Field(..., description="Population in the area")
-    households: float = Field(..., description="Number of households in the area")
-    median_income: float = Field(..., description="Median income of the area")
-    ocean_proximity: str = Field(..., description="Proximity to ocean (e.g., NEAR BAY, INLAND)")
+# Import custom transformer to avoid deserialization error
+from custom_transformer import CombinedAttributesAdder
 
-@app.post("/predict")
-def predict(input1 : PredictHousePrice):
-    model = joblib.load(open('Housing_prices.joblib', 'rb'))
-    User_input_df = pd.DataFrame([{
-        'longitude': input1.longitude,
-        'latitude': input1.latitude,
-        'housing_median_age': input1.housing_median_age,
-        'total_rooms': input1.total_rooms,
-        'total_bedrooms': input1.total_bedrooms,
-        'population' : input1.population,
-        'households': input1.households,
-        'median_income': input1.median_income,
-        'ocean_proximity': input1.ocean_proximity
-    }])
-    some_data = pd.DataFrame(User_input_df)
-    print(model.predict(some_data)[0])
+# # Load pipeline
+# model = joblib.load("housing_pipeline.joblib")
+
+app = FastAPI()
+
+
+
+
+
+@app.post("/predict", response_model = PredictionResponse)
+def predict(data: HousingInput):
+    try:
+        input_dict = {
+            "longitude": data.longitude,
+            "latitude": data.latitude,
+            "housing_median_age": data.housing_median_age,
+            "total_rooms": data.total_rooms,
+            "total_bedrooms": data.total_bedrooms,
+            "population": data.population,
+            "households": data.households,
+            "median_income": data.median_income,
+            "ocean_proximity": data.ocean_proximity
+        }
+
+        # Wrap in a DataFrame to preserve column names
+        input_df = pd.DataFrame([input_dict])
+
+        # prediction = model.predict(input_df)
+        prediction = predict_output(input_dict)
+        return {"prediction": prediction.tolist()}
+
+    except Exception as e:
+        return {"error": str(e), "trace": traceback.format_exc()}
